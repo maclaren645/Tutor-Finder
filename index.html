@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutor Finder - Hyperlocal Discovery</title>
+    <!-- Leaflet Map CSS for handling vector coordinates -->
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body, html {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background-color: #1a1a1a;
+        }
+
+        /* Full-Bleed Map Canvas Layout */
+        #map {
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Swiggy/Rapido Styled Header & Logo Overlay */
+        .brand-header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 24px;
+            border-radius: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            text-align: center;
+        }
+
+        .brand-header h1 {
+            font-size: 1.2rem;
+            color: #0052cc;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 800;
+        }
+
+        /* Top-Left Action Node (+) */
+        .add-centre-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            width: 48px;
+            height: 48px;
+            background: #0052cc;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 82, 204, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+        }
+
+        .add-centre-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Right-to-Left Sliding Discovery Drawer (50% Width) */
+        .drawer {
+            position: absolute;
+            top: 0;
+            right: -50%;
+            width: 50%;
+            height: 100%;
+            background: #ffffff;
+            z-index: 20;
+            box-shadow: -5px 0 25px rgba(0,0,0,0.25);
+            transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 30px;
+        }
+
+        .drawer.open {
+            right: 0;
+        }
+
+        /* Visual indicator for drag gestures */
+        .drawer-handle {
+            position: absolute;
+            left: -15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 15px;
+            height: 60px;
+            background: #ffffff;
+            border-radius: 8px 0 0 8px;
+            box-shadow: -3px 0 10px rgba(0,0,0,0.1);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .drawer-title {
+            font-size: 1.5rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-weight: 700;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 10px;
+        }
+
+        .tutor-list {
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .tutor-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .tutor-card h3 {
+            color: #0f172a;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+
+        .tutor-badge {
+            display: inline-block;
+            background: #e2e8f0;
+            color: #475569;
+            font-size: 0.75rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .subject-matrix-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            padding: 4px 0;
+            color: #334155;
+        }
+
+        .subject-price {
+            font-weight: 700;
+            color: #0052cc;
+        }
+
+        /* Modern Creation Overlay Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 30;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-width: 550px;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h2 {
+            font-size: 1.4rem;
+            color: #0f172a;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 6px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+
+        .subject-fee-grid {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            background: #f8fafc;
+        }
+
+        .subject-fee-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            gap: 10px;
+        }
+
+        .subject-fee-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: #0052cc;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        .close-modal {
+            float: right;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: #94a3b8;
+        }
+
+        @media (max-width: 768px) {
+            .drawer {
+                width: 85%;
+                right: -85%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top-Left Trigger Command Node -->
+    <button class="add-centre-btn" onclick="openCreationModal()">+</button>
+
+    <!-- App Branding Banner -->
+    <div class="brand-header">
+        <h1>Tutor Finder</h1>
+    </div>
+
+    <!-- The Full-Screen Vector Styled Map Canvas -->
+    <div id="map"></div>
+
+    <!-- Gesture/Swipe Capable Right Panel Drawer -->
+    <div id="searchDrawer" class="drawer">
+        <div class="drawer-handle" onclick="toggleDrawer()">◀</div>
+        <h2 class="drawer-title">Find Tutors Nearby</h2>
+        <div class="tutor-list" id="tutorListContainer">
+            <!-- Simulated Database Entries Will Populate Automatically Here -->
+        </div>
+    </div>
+
+    <!-- Onboarding Form Terminal Panel Overlay -->
+    <div id="creationModal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeCreationModal()">&times;</span>
+            <h2>Wanna create new tuition centre?</h2>
+            
+            <form id="tutorRegisterForm" onsubmit="handleRegistration(event)">
+                <div class="form-group">
+                    <label>Tuition or Center Name</label>
+                    <input type="text" class="form-control" required id="regName" placeholder="e.g., Apex Academy">
+                </div>
+
+                <div class="form-group">
+                    <label>Target Standard/Class</label>
+                    <select class="form-control" id="regStandard" required>
+                        <option value="1-std to 5-std">1-std to 5-std</option>
+                        <option value="6-std to 10-std">6-std to 10-std</option>
+                        <option value="11-std to 12-std">11-std to 12-std</option>
+                        <option value="College">College Level</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Location Registration (GPS System)</label>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="form-control" style="background:#f1f5f9; cursor:pointer;" onclick="fetchLiveLocation()">📍 Fetch Live GPS Location</button>
+                        <button type="button" class="form-control" style="background:#f1f5f9; cursor:pointer;" onclick="setHomeLocation()">🏠 Set Home Base Address</button>
+                    </div>
+                    <input type="text" class="form-control" id="regCoords" readonly placeholder="Coordinates will auto-lock" style="margin-top: 8px; font-family: monospace; font-size: 0.8rem; background: #f8fafc;">
+                </div>
+
+                <div class="form-group">
+                    <label>Subjects & Custom Pricing (Monthly Fees in INR)</label>
+                    <div class="subject-fee-grid">
+                        <div class="subject-fee-item">
+
